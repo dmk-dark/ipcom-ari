@@ -79,6 +79,9 @@ reconnection delays. A cancelled `connectWebSocket()` rejects, while closing an
 established connection releases its heartbeat and event listeners. Concurrent
 close calls wait for the same operation; other ARI clients are not affected.
 
+`Dial` events are delivered in arrival order without debounce. Concurrent calls
+and successive statuses of the same peer must not overwrite each other.
+
 ## Event Instances
 
 ### Channel, Bridge and Playback Instances in Events

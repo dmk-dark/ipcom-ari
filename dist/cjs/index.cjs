@@ -2986,6 +2986,10 @@ var WebSocketClient = class extends import_events4.EventEmitter {
         return;
       }
       const event = parsed;
+      if (event.type === "Dial") {
+        this.processEvent(event);
+        return;
+      }
       const key = this.getEventKey(event);
       const existing = this.eventQueue.get(key);
       if (existing) {

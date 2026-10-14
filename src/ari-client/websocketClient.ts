@@ -375,6 +375,12 @@ export class WebSocketClient extends EventEmitter {
       }
       const event = parsed as WebSocketEvent;
 
+      // Dial is a transition stream, not a state snapshot: never coalesce calls or statuses.
+      if (event.type === 'Dial') {
+        this.processEvent(event);
+        return;
+      }
+
       // Debounce eventos similares
       const key = this.getEventKey(event);
       const existing = this.eventQueue.get(key);
