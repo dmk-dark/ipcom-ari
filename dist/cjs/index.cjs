@@ -2909,7 +2909,10 @@ var WebSocketClient = class extends import_events4.EventEmitter {
           socket.on("message", (data) => {
             if (!signal.aborted) this.handleMessage(data.toString());
           });
-          socket.on("error", (error) => reject(error));
+          socket.on("error", (error) => {
+            if (!signal.aborted) console.error("WebSocket error:", error.message);
+            reject(error);
+          });
           socket.once("close", () => {
             signal.removeEventListener("abort", onAbort);
             if (this.ws === socket) this.ws = void 0;

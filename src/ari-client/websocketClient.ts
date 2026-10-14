@@ -281,7 +281,10 @@ export class WebSocketClient extends EventEmitter {
             if (!signal.aborted) this.handleMessage(data.toString());
           });
           // CONNECTING close emits error before close; keep this listener until closure.
-          socket.on('error', (error: Error) => reject(error));
+          socket.on('error', (error: Error) => {
+            if (!signal.aborted) console.error('WebSocket error:', error.message);
+            reject(error);
+          });
           socket.once('close', () => {
             signal.removeEventListener('abort', onAbort);
             if (this.ws === socket) this.ws = undefined;
