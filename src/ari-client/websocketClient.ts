@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { type IBackOffOptions, backOff } from 'exponential-backoff';
+import { setTimeout as delay } from 'node:timers/promises';
 import WebSocket from 'ws';
 import type { AriClient } from './ariClient';
 import type { BaseClient } from './baseClient.js';
@@ -22,6 +22,8 @@ export class WebSocketClient extends EventEmitter {
   private reconnectionAttempts = 0;
   private lastWsUrl: string = '';
   private eventQueue: Map<string, NodeJS.Timeout> = new Map();
+  private connectionAbort = new AbortController();
+  private closing?: Promise<void>;
 
   /**
    * Logs the current connection status of the WebSocket client at regular intervals.
@@ -59,31 +61,13 @@ export class WebSocketClient extends EventEmitter {
    * @private
    * @returns {void}
    */
-  private setupHeartbeat(): void {
+  private setupHeartbeat(socket: WebSocket): void {
     const interval = setInterval(() => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.ping();
-      }
+      if (socket.readyState === WebSocket.OPEN) socket.ping();
     }, 30000);
-
-    this.ws!.once('close', () => clearInterval(interval));
+    socket.once('close', () => clearInterval(interval));
   }
 
-  private readonly backOffOptions: IBackOffOptions = {
-    numOfAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
-    startingDelay: DEFAULT_STARTING_DELAY,
-    maxDelay: DEFAULT_MAX_DELAY,
-    timeMultiple: 2,
-    jitter: 'full',
-    delayFirstAttempt: false,
-    retry: (error: Error, attemptNumber: number) => {
-      console.warn(
-        `Connection attempt #${attemptNumber} failed:`,
-        error.message || 'Unknown error'
-      );
-      return attemptNumber < this.maxReconnectAttempts;
-    },
-  };
 
   /**
    * Creates a new WebSocketClient instance.
@@ -129,6 +113,8 @@ export class WebSocketClient extends EventEmitter {
       return;
     }
 
+    if (this.closing) await this.closing;
+    this.connectionAbort = new AbortController();
     this.shouldReconnect = true; // 🔹 Permite reconexão caso o WebSocket caia inesperadamente
     this.isConnecting = true;
     const { baseUrl, username, password, secure } = this.baseClient.getCredentials();
@@ -265,13 +251,21 @@ export class WebSocketClient extends EventEmitter {
    *         after the maximum number of retry attempts.
    */
   private async initializeWebSocket(wsUrl: string): Promise<void> {
-    return backOff(async () => {
-      return new Promise<void>((resolve, reject) => {
-        try {
-          this.ws = new WebSocket(wsUrl);
+    const signal = this.connectionAbort.signal;
+    for (let attempt = 1; ; attempt++) {
+      signal.throwIfAborted();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const socket = new WebSocket(wsUrl);
+          this.ws = socket;
+          let opened = false;
+          const onAbort = (): void => socket.close();
+          signal.addEventListener('abort', onAbort, { once: true });
 
-          this.ws.once('open', () => {
-            this.setupHeartbeat();
+          socket.once('open', () => {
+            if (signal.aborted) return socket.close();
+            opened = true;
+            this.setupHeartbeat(socket);
             if (this.isReconnecting) {
               this.emit('reconnected', {
                 apps: this.apps,
@@ -283,32 +277,35 @@ export class WebSocketClient extends EventEmitter {
             this.emit('connected');
             resolve();
           });
-
-          this.ws.on('message', (data) => this.handleMessage(data.toString()));
-
-          this.ws.once('close', (code) => {
-            // 🔹 Usa `once` para evitar handlers duplicados
-            console.warn(
-              `WebSocket disconnected with code ${code}. Attempting to reconnect...`
-            );
-            if (!this.isReconnecting) {
-              this.reconnect(this.lastWsUrl);
+          socket.on('message', (data) => {
+            if (!signal.aborted) this.handleMessage(data.toString());
+          });
+          // CONNECTING close emits error before close; keep this listener until closure.
+          socket.on('error', (error: Error) => reject(error));
+          socket.once('close', () => {
+            signal.removeEventListener('abort', onAbort);
+            if (this.ws === socket) this.ws = undefined;
+            if (!opened) reject(new Error('WebSocket closed before opening'));
+            if (opened && !signal.aborted && !this.isReconnecting) {
+              void this.reconnect(wsUrl);
             }
           });
-
-          this.ws.once('error', (err: Error) => {
-            // 🔹 Usa `once` para evitar acúmulo de eventos
-            console.error('WebSocket error:', err.message);
-            if (!this.isReconnecting) {
-              this.reconnect(this.lastWsUrl);
-            }
-            reject(err);
-          });
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }, this.backOffOptions);
+        });
+        return;
+      } catch (error) {
+        signal.throwIfAborted();
+        if (attempt >= this.maxReconnectAttempts) throw error;
+        console.warn(
+          `Connection attempt #${attempt} failed:`,
+          error instanceof Error ? error.message : String(error)
+        );
+        const maximumDelay = Math.min(
+          DEFAULT_STARTING_DELAY * 2 ** (attempt - 1),
+          DEFAULT_MAX_DELAY
+        );
+        await delay(Math.random() * maximumDelay, undefined, { signal });
+      }
+    }
   }
 
   private getEventKey(event: WebSocketEvent): string {
@@ -424,59 +421,54 @@ export class WebSocketClient extends EventEmitter {
     this.reconnectionAttempts++;
     console.log(`Tentando reconexão #${this.reconnectionAttempts}...`);
 
-    backOff(() => this.initializeWebSocket(wsUrl), this.backOffOptions)
-      .catch((error) => {
-        console.error(`Falha ao reconectar: ${error.message}`);
+    try {
+      await this.initializeWebSocket(wsUrl);
+    } catch (error) {
+      if (!this.connectionAbort.signal.aborted) {
+        console.error('Failed to reconnect:', error);
         this.emit('reconnectFailed', error);
-      })
-      .finally(() => {
-        this.isReconnecting = false;
-      });
+      }
+    } finally {
+      this.isReconnecting = false;
+    }
   }
 
   /**
-   * Closes the WebSocket connection if it exists.
-   *
-   * This method attempts to gracefully close the WebSocket connection
-   * and sets the WebSocket instance to undefined. If an error occurs
-   * during the closing process, it will be caught and logged.
-   *
-   * @throws {Error} Logs an error message if closing the WebSocket fails.
+   * Cancels pending connects and retry delays, then closes the current socket.
+   * Keeps error/close listeners until closure so handshake cancellation rejects
+   * connect() without an unhandled error and heartbeat cleanup still runs.
+   * Concurrent calls wait for the same bounded close operation.
    */
-  public async close(): Promise<void> {
-    if (!this.ws) {
-      console.warn('No WebSocket connection to close');
-      return;
-    }
+  public close(): Promise<void> {
+    if (this.closing) return this.closing;
+    const closing = this.runClose().finally(() => {
+      this.closing = undefined;
+    });
+    this.closing = closing;
+    return closing;
+  }
 
-    console.log('Closing WebSocket connection.');
+  private async runClose(): Promise<void> {
     this.shouldReconnect = false;
-
-    // Limpar event queue
+    const socket = this.ws;
+    this.connectionAbort.abort(new Error('WebSocket connection cancelled'));
     this.eventQueue.forEach((timeout) => clearTimeout(timeout));
     this.eventQueue.clear();
 
-    const closeTimeout = setTimeout(() => {
-      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-        this.ws.terminate();
-      }
-    }, 5000);
-
-    try {
-      this.ws.removeAllListeners();
-      await new Promise<void>((resolve) => {
-        this.ws!.once('close', () => {
-          clearTimeout(closeTimeout);
-          resolve();
+    if (socket && socket.readyState !== WebSocket.CLOSED) {
+      const closeTimeout = setTimeout(() => socket.terminate(), 5000);
+      try {
+        await new Promise<void>((resolve) => {
+          socket.once('close', resolve);
+          socket.close();
         });
-        this.ws!.close();
-      });
-    } catch (error) {
-      console.error('Error closing WebSocket:', error);
-    } finally {
-      this.ws = undefined;
-      this.emit('disconnected');
+      } finally {
+        clearTimeout(closeTimeout);
+        socket.removeAllListeners();
+      }
     }
+    if (this.ws === socket) this.ws = undefined;
+    this.emit('disconnected');
   }
 
   /**
@@ -532,6 +524,7 @@ export class WebSocketClient extends EventEmitter {
 
     // Parar tentativas de reconexão
     this.shouldReconnect = false;
+    this.connectionAbort.abort(new Error('WebSocket connection cancelled'));
     this.isReconnecting = false;
 
     // Limpar URL armazenada

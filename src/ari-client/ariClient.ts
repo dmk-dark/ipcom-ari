@@ -328,55 +328,20 @@ export class AriClient {
   /**
    * Closes the WebSocket connection if one exists.
    */
-  public closeWebSocket(): Promise<void> {
-    return new Promise((resolve) => {
-      if (!this.webSocketClient) {
-        console.warn('No WebSocket connection to close');
-        resolve();
-        return;
-      }
+  public async closeWebSocket(): Promise<void> {
+    const socketClient = this.webSocketClient;
+    if (!socketClient) return;
 
-      console.log('Closing WebSocket connection and cleaning up listeners.');
-
-      const closeTimeout = setTimeout(() => {
-        if (this.webSocketClient) {
-          this.webSocketClient.removeAllListeners();
-          this.webSocketClient = undefined;
-        }
-        resolve();
-      }, 5000);
-
-      this.eventListeners.forEach((listeners, event) => {
-        listeners.forEach((listener) => {
-          this.webSocketClient?.off(
-            event as keyof AriEventMap,
-            listener as (...args: any[]) => void
-          );
-        });
-      });
-      this.eventListeners.clear();
-
-      this.webSocketClient.once('close', () => {
-        clearTimeout(closeTimeout);
-        this.webSocketClient = undefined;
-        console.log('WebSocket connection closed');
-        resolve();
-      });
-
-      this.webSocketClient
-        .close()
-        .then(() => {
-          clearTimeout(closeTimeout);
-          this.webSocketClient = undefined;
-          resolve();
-        })
-        .catch((error) => {
-          console.error('Error during WebSocket close:', error);
-          clearTimeout(closeTimeout);
-          this.webSocketClient = undefined;
-          resolve();
-        });
+    this.eventListeners.forEach((listeners, event) => {
+      listeners.forEach((listener) => socketClient.off(event, listener));
     });
+    this.eventListeners.clear();
+    try {
+      await socketClient.close();
+    } finally {
+      socketClient.cleanup();
+      if (this.webSocketClient === socketClient) this.webSocketClient = undefined;
+    }
   }
 
   /**

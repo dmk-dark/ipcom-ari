@@ -19,6 +19,8 @@ export declare class WebSocketClient extends EventEmitter {
     private reconnectionAttempts;
     private lastWsUrl;
     private eventQueue;
+    private connectionAbort;
+    private closing?;
     /**
      * Logs the current connection status of the WebSocket client at regular intervals.
      *
@@ -46,7 +48,6 @@ export declare class WebSocketClient extends EventEmitter {
      * @returns {void}
      */
     private setupHeartbeat;
-    private readonly backOffOptions;
     /**
      * Creates a new WebSocketClient instance.
      *
@@ -133,15 +134,13 @@ export declare class WebSocketClient extends EventEmitter {
      */
     private reconnect;
     /**
-     * Closes the WebSocket connection if it exists.
-     *
-     * This method attempts to gracefully close the WebSocket connection
-     * and sets the WebSocket instance to undefined. If an error occurs
-     * during the closing process, it will be caught and logged.
-     *
-     * @throws {Error} Logs an error message if closing the WebSocket fails.
+     * Cancels pending connects and retry delays, then closes the current socket.
+     * Keeps error/close listeners until closure so handshake cancellation rejects
+     * connect() without an unhandled error and heartbeat cleanup still runs.
+     * Concurrent calls wait for the same bounded close operation.
      */
     close(): Promise<void>;
+    private runClose;
     /**
      * Checks if the WebSocket connection is currently open and active.
      *

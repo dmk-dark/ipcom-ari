@@ -5,9 +5,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -29,552 +26,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// node_modules/exponential-backoff/dist/options.js
-var require_options = __commonJS({
-  "node_modules/exponential-backoff/dist/options.js"(exports2) {
-    "use strict";
-    var __assign = exports2 && exports2.__assign || function() {
-      __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-          s = arguments[i];
-          for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-            t[p] = s[p];
-        }
-        return t;
-      };
-      return __assign.apply(this, arguments);
-    };
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var defaultOptions = {
-      delayFirstAttempt: false,
-      jitter: "none",
-      maxDelay: Infinity,
-      numOfAttempts: 10,
-      retry: function() {
-        return true;
-      },
-      startingDelay: 100,
-      timeMultiple: 2
-    };
-    function getSanitizedOptions(options) {
-      var sanitized = __assign(__assign({}, defaultOptions), options);
-      if (sanitized.numOfAttempts < 1) {
-        sanitized.numOfAttempts = 1;
-      }
-      return sanitized;
-    }
-    exports2.getSanitizedOptions = getSanitizedOptions;
-  }
-});
-
-// node_modules/exponential-backoff/dist/jitter/full/full.jitter.js
-var require_full_jitter = __commonJS({
-  "node_modules/exponential-backoff/dist/jitter/full/full.jitter.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    function fullJitter(delay) {
-      var jitteredDelay = Math.random() * delay;
-      return Math.round(jitteredDelay);
-    }
-    exports2.fullJitter = fullJitter;
-  }
-});
-
-// node_modules/exponential-backoff/dist/jitter/no/no.jitter.js
-var require_no_jitter = __commonJS({
-  "node_modules/exponential-backoff/dist/jitter/no/no.jitter.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    function noJitter(delay) {
-      return delay;
-    }
-    exports2.noJitter = noJitter;
-  }
-});
-
-// node_modules/exponential-backoff/dist/jitter/jitter.factory.js
-var require_jitter_factory = __commonJS({
-  "node_modules/exponential-backoff/dist/jitter/jitter.factory.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var full_jitter_1 = require_full_jitter();
-    var no_jitter_1 = require_no_jitter();
-    function JitterFactory(options) {
-      switch (options.jitter) {
-        case "full":
-          return full_jitter_1.fullJitter;
-        case "none":
-        default:
-          return no_jitter_1.noJitter;
-      }
-    }
-    exports2.JitterFactory = JitterFactory;
-  }
-});
-
-// node_modules/exponential-backoff/dist/delay/delay.base.js
-var require_delay_base = __commonJS({
-  "node_modules/exponential-backoff/dist/delay/delay.base.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var jitter_factory_1 = require_jitter_factory();
-    var Delay = (
-      /** @class */
-      (function() {
-        function Delay2(options) {
-          this.options = options;
-          this.attempt = 0;
-        }
-        Delay2.prototype.apply = function() {
-          var _this = this;
-          return new Promise(function(resolve) {
-            return setTimeout(resolve, _this.jitteredDelay);
-          });
-        };
-        Delay2.prototype.setAttemptNumber = function(attempt) {
-          this.attempt = attempt;
-        };
-        Object.defineProperty(Delay2.prototype, "jitteredDelay", {
-          get: function() {
-            var jitter = jitter_factory_1.JitterFactory(this.options);
-            return jitter(this.delay);
-          },
-          enumerable: true,
-          configurable: true
-        });
-        Object.defineProperty(Delay2.prototype, "delay", {
-          get: function() {
-            var constant = this.options.startingDelay;
-            var base = this.options.timeMultiple;
-            var power = this.numOfDelayedAttempts;
-            var delay = constant * Math.pow(base, power);
-            return Math.min(delay, this.options.maxDelay);
-          },
-          enumerable: true,
-          configurable: true
-        });
-        Object.defineProperty(Delay2.prototype, "numOfDelayedAttempts", {
-          get: function() {
-            return this.attempt;
-          },
-          enumerable: true,
-          configurable: true
-        });
-        return Delay2;
-      })()
-    );
-    exports2.Delay = Delay;
-  }
-});
-
-// node_modules/exponential-backoff/dist/delay/skip-first/skip-first.delay.js
-var require_skip_first_delay = __commonJS({
-  "node_modules/exponential-backoff/dist/delay/skip-first/skip-first.delay.js"(exports2) {
-    "use strict";
-    var __extends = exports2 && exports2.__extends || /* @__PURE__ */ (function() {
-      var extendStatics = function(d, b) {
-        extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
-          d2.__proto__ = b2;
-        } || function(d2, b2) {
-          for (var p in b2) if (b2.hasOwnProperty(p)) d2[p] = b2[p];
-        };
-        return extendStatics(d, b);
-      };
-      return function(d, b) {
-        extendStatics(d, b);
-        function __() {
-          this.constructor = d;
-        }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-      };
-    })();
-    var __awaiter = exports2 && exports2.__awaiter || function(thisArg, _arguments, P, generator) {
-      function adopt(value) {
-        return value instanceof P ? value : new P(function(resolve) {
-          resolve(value);
-        });
-      }
-      return new (P || (P = Promise))(function(resolve, reject) {
-        function fulfilled(value) {
-          try {
-            step(generator.next(value));
-          } catch (e) {
-            reject(e);
-          }
-        }
-        function rejected(value) {
-          try {
-            step(generator["throw"](value));
-          } catch (e) {
-            reject(e);
-          }
-        }
-        function step(result) {
-          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-        }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-      });
-    };
-    var __generator = exports2 && exports2.__generator || function(thisArg, body) {
-      var _ = { label: 0, sent: function() {
-        if (t[0] & 1) throw t[1];
-        return t[1];
-      }, trys: [], ops: [] }, f, y, t, g;
-      return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-        return this;
-      }), g;
-      function verb(n) {
-        return function(v) {
-          return step([n, v]);
-        };
-      }
-      function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-          if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-          if (y = 0, t) op = [op[0] & 2, t.value];
-          switch (op[0]) {
-            case 0:
-            case 1:
-              t = op;
-              break;
-            case 4:
-              _.label++;
-              return { value: op[1], done: false };
-            case 5:
-              _.label++;
-              y = op[1];
-              op = [0];
-              continue;
-            case 7:
-              op = _.ops.pop();
-              _.trys.pop();
-              continue;
-            default:
-              if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-                _ = 0;
-                continue;
-              }
-              if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-                _.label = op[1];
-                break;
-              }
-              if (op[0] === 6 && _.label < t[1]) {
-                _.label = t[1];
-                t = op;
-                break;
-              }
-              if (t && _.label < t[2]) {
-                _.label = t[2];
-                _.ops.push(op);
-                break;
-              }
-              if (t[2]) _.ops.pop();
-              _.trys.pop();
-              continue;
-          }
-          op = body.call(thisArg, _);
-        } catch (e) {
-          op = [6, e];
-          y = 0;
-        } finally {
-          f = t = 0;
-        }
-        if (op[0] & 5) throw op[1];
-        return { value: op[0] ? op[1] : void 0, done: true };
-      }
-    };
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var delay_base_1 = require_delay_base();
-    var SkipFirstDelay = (
-      /** @class */
-      (function(_super) {
-        __extends(SkipFirstDelay2, _super);
-        function SkipFirstDelay2() {
-          return _super !== null && _super.apply(this, arguments) || this;
-        }
-        SkipFirstDelay2.prototype.apply = function() {
-          return __awaiter(this, void 0, void 0, function() {
-            return __generator(this, function(_a) {
-              return [2, this.isFirstAttempt ? true : _super.prototype.apply.call(this)];
-            });
-          });
-        };
-        Object.defineProperty(SkipFirstDelay2.prototype, "isFirstAttempt", {
-          get: function() {
-            return this.attempt === 0;
-          },
-          enumerable: true,
-          configurable: true
-        });
-        Object.defineProperty(SkipFirstDelay2.prototype, "numOfDelayedAttempts", {
-          get: function() {
-            return this.attempt - 1;
-          },
-          enumerable: true,
-          configurable: true
-        });
-        return SkipFirstDelay2;
-      })(delay_base_1.Delay)
-    );
-    exports2.SkipFirstDelay = SkipFirstDelay;
-  }
-});
-
-// node_modules/exponential-backoff/dist/delay/always/always.delay.js
-var require_always_delay = __commonJS({
-  "node_modules/exponential-backoff/dist/delay/always/always.delay.js"(exports2) {
-    "use strict";
-    var __extends = exports2 && exports2.__extends || /* @__PURE__ */ (function() {
-      var extendStatics = function(d, b) {
-        extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
-          d2.__proto__ = b2;
-        } || function(d2, b2) {
-          for (var p in b2) if (b2.hasOwnProperty(p)) d2[p] = b2[p];
-        };
-        return extendStatics(d, b);
-      };
-      return function(d, b) {
-        extendStatics(d, b);
-        function __() {
-          this.constructor = d;
-        }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-      };
-    })();
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var delay_base_1 = require_delay_base();
-    var AlwaysDelay = (
-      /** @class */
-      (function(_super) {
-        __extends(AlwaysDelay2, _super);
-        function AlwaysDelay2() {
-          return _super !== null && _super.apply(this, arguments) || this;
-        }
-        return AlwaysDelay2;
-      })(delay_base_1.Delay)
-    );
-    exports2.AlwaysDelay = AlwaysDelay;
-  }
-});
-
-// node_modules/exponential-backoff/dist/delay/delay.factory.js
-var require_delay_factory = __commonJS({
-  "node_modules/exponential-backoff/dist/delay/delay.factory.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var skip_first_delay_1 = require_skip_first_delay();
-    var always_delay_1 = require_always_delay();
-    function DelayFactory(options, attempt) {
-      var delay = initDelayClass(options);
-      delay.setAttemptNumber(attempt);
-      return delay;
-    }
-    exports2.DelayFactory = DelayFactory;
-    function initDelayClass(options) {
-      if (!options.delayFirstAttempt) {
-        return new skip_first_delay_1.SkipFirstDelay(options);
-      }
-      return new always_delay_1.AlwaysDelay(options);
-    }
-  }
-});
-
-// node_modules/exponential-backoff/dist/backoff.js
-var require_backoff = __commonJS({
-  "node_modules/exponential-backoff/dist/backoff.js"(exports2) {
-    "use strict";
-    var __awaiter = exports2 && exports2.__awaiter || function(thisArg, _arguments, P, generator) {
-      function adopt(value) {
-        return value instanceof P ? value : new P(function(resolve) {
-          resolve(value);
-        });
-      }
-      return new (P || (P = Promise))(function(resolve, reject) {
-        function fulfilled(value) {
-          try {
-            step(generator.next(value));
-          } catch (e) {
-            reject(e);
-          }
-        }
-        function rejected(value) {
-          try {
-            step(generator["throw"](value));
-          } catch (e) {
-            reject(e);
-          }
-        }
-        function step(result) {
-          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-        }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-      });
-    };
-    var __generator = exports2 && exports2.__generator || function(thisArg, body) {
-      var _ = { label: 0, sent: function() {
-        if (t[0] & 1) throw t[1];
-        return t[1];
-      }, trys: [], ops: [] }, f, y, t, g;
-      return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-        return this;
-      }), g;
-      function verb(n) {
-        return function(v) {
-          return step([n, v]);
-        };
-      }
-      function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-          if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-          if (y = 0, t) op = [op[0] & 2, t.value];
-          switch (op[0]) {
-            case 0:
-            case 1:
-              t = op;
-              break;
-            case 4:
-              _.label++;
-              return { value: op[1], done: false };
-            case 5:
-              _.label++;
-              y = op[1];
-              op = [0];
-              continue;
-            case 7:
-              op = _.ops.pop();
-              _.trys.pop();
-              continue;
-            default:
-              if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-                _ = 0;
-                continue;
-              }
-              if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-                _.label = op[1];
-                break;
-              }
-              if (op[0] === 6 && _.label < t[1]) {
-                _.label = t[1];
-                t = op;
-                break;
-              }
-              if (t && _.label < t[2]) {
-                _.label = t[2];
-                _.ops.push(op);
-                break;
-              }
-              if (t[2]) _.ops.pop();
-              _.trys.pop();
-              continue;
-          }
-          op = body.call(thisArg, _);
-        } catch (e) {
-          op = [6, e];
-          y = 0;
-        } finally {
-          f = t = 0;
-        }
-        if (op[0] & 5) throw op[1];
-        return { value: op[0] ? op[1] : void 0, done: true };
-      }
-    };
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    var options_1 = require_options();
-    var delay_factory_1 = require_delay_factory();
-    function backOff2(request, options) {
-      if (options === void 0) {
-        options = {};
-      }
-      return __awaiter(this, void 0, void 0, function() {
-        var sanitizedOptions, backOff3;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
-            case 0:
-              sanitizedOptions = options_1.getSanitizedOptions(options);
-              backOff3 = new BackOff(request, sanitizedOptions);
-              return [4, backOff3.execute()];
-            case 1:
-              return [2, _a.sent()];
-          }
-        });
-      });
-    }
-    exports2.backOff = backOff2;
-    var BackOff = (
-      /** @class */
-      (function() {
-        function BackOff2(request, options) {
-          this.request = request;
-          this.options = options;
-          this.attemptNumber = 0;
-        }
-        BackOff2.prototype.execute = function() {
-          return __awaiter(this, void 0, void 0, function() {
-            var e_1, shouldRetry;
-            return __generator(this, function(_a) {
-              switch (_a.label) {
-                case 0:
-                  if (!!this.attemptLimitReached) return [3, 7];
-                  _a.label = 1;
-                case 1:
-                  _a.trys.push([1, 4, , 6]);
-                  return [4, this.applyDelay()];
-                case 2:
-                  _a.sent();
-                  return [4, this.request()];
-                case 3:
-                  return [2, _a.sent()];
-                case 4:
-                  e_1 = _a.sent();
-                  this.attemptNumber++;
-                  return [4, this.options.retry(e_1, this.attemptNumber)];
-                case 5:
-                  shouldRetry = _a.sent();
-                  if (!shouldRetry || this.attemptLimitReached) {
-                    throw e_1;
-                  }
-                  return [3, 6];
-                case 6:
-                  return [3, 0];
-                case 7:
-                  throw new Error("Something went wrong.");
-              }
-            });
-          });
-        };
-        Object.defineProperty(BackOff2.prototype, "attemptLimitReached", {
-          get: function() {
-            return this.attemptNumber >= this.options.numOfAttempts;
-          },
-          enumerable: true,
-          configurable: true
-        });
-        BackOff2.prototype.applyDelay = function() {
-          return __awaiter(this, void 0, void 0, function() {
-            var delay;
-            return __generator(this, function(_a) {
-              switch (_a.label) {
-                case 0:
-                  delay = delay_factory_1.DelayFactory(this.options, this.attemptNumber);
-                  return [4, delay.apply()];
-                case 1:
-                  _a.sent();
-                  return [
-                    2
-                    /*return*/
-                  ];
-              }
-            });
-          });
-        };
-        return BackOff2;
-      })()
-    );
-  }
-});
 
 // src/index.ts
 var index_exports = {};
@@ -3236,7 +2687,7 @@ var Sounds = class {
 
 // src/ari-client/websocketClient.ts
 var import_events4 = require("events");
-var import_exponential_backoff = __toESM(require_backoff(), 1);
+var import_promises = require("node:timers/promises");
 var import_ws = __toESM(require("ws"), 1);
 var DEFAULT_MAX_RECONNECT_ATTEMPTS = 30;
 var DEFAULT_STARTING_DELAY = 500;
@@ -3275,6 +2726,8 @@ var WebSocketClient = class extends import_events4.EventEmitter {
   reconnectionAttempts = 0;
   lastWsUrl = "";
   eventQueue = /* @__PURE__ */ new Map();
+  connectionAbort = new AbortController();
+  closing;
   /**
    * Logs the current connection status of the WebSocket client at regular intervals.
    *
@@ -3310,29 +2763,12 @@ var WebSocketClient = class extends import_events4.EventEmitter {
    * @private
    * @returns {void}
    */
-  setupHeartbeat() {
+  setupHeartbeat(socket) {
     const interval = setInterval(() => {
-      if (this.ws?.readyState === import_ws.default.OPEN) {
-        this.ws.ping();
-      }
+      if (socket.readyState === import_ws.default.OPEN) socket.ping();
     }, 3e4);
-    this.ws.once("close", () => clearInterval(interval));
+    socket.once("close", () => clearInterval(interval));
   }
-  backOffOptions = {
-    numOfAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
-    startingDelay: DEFAULT_STARTING_DELAY,
-    maxDelay: DEFAULT_MAX_DELAY,
-    timeMultiple: 2,
-    jitter: "full",
-    delayFirstAttempt: false,
-    retry: (error, attemptNumber) => {
-      console.warn(
-        `Connection attempt #${attemptNumber} failed:`,
-        error.message || "Unknown error"
-      );
-      return attemptNumber < this.maxReconnectAttempts;
-    }
-  };
   /**
    * Establishes a WebSocket connection to the Asterisk server.
    *
@@ -3350,6 +2786,8 @@ var WebSocketClient = class extends import_events4.EventEmitter {
       );
       return;
     }
+    if (this.closing) await this.closing;
+    this.connectionAbort = new AbortController();
     this.shouldReconnect = true;
     this.isConnecting = true;
     const { baseUrl, username, password, secure } = this.baseClient.getCredentials();
@@ -3443,12 +2881,20 @@ var WebSocketClient = class extends import_events4.EventEmitter {
    *         after the maximum number of retry attempts.
    */
   async initializeWebSocket(wsUrl) {
-    return (0, import_exponential_backoff.backOff)(async () => {
-      return new Promise((resolve, reject) => {
-        try {
-          this.ws = new import_ws.default(wsUrl);
-          this.ws.once("open", () => {
-            this.setupHeartbeat();
+    const signal = this.connectionAbort.signal;
+    for (let attempt = 1; ; attempt++) {
+      signal.throwIfAborted();
+      try {
+        await new Promise((resolve, reject) => {
+          const socket = new import_ws.default(wsUrl);
+          this.ws = socket;
+          let opened = false;
+          const onAbort = () => socket.close();
+          signal.addEventListener("abort", onAbort, { once: true });
+          socket.once("open", () => {
+            if (signal.aborted) return socket.close();
+            opened = true;
+            this.setupHeartbeat(socket);
             if (this.isReconnecting) {
               this.emit("reconnected", {
                 apps: this.apps,
@@ -3460,27 +2906,34 @@ var WebSocketClient = class extends import_events4.EventEmitter {
             this.emit("connected");
             resolve();
           });
-          this.ws.on("message", (data) => this.handleMessage(data.toString()));
-          this.ws.once("close", (code) => {
-            console.warn(
-              `WebSocket disconnected with code ${code}. Attempting to reconnect...`
-            );
-            if (!this.isReconnecting) {
-              this.reconnect(this.lastWsUrl);
+          socket.on("message", (data) => {
+            if (!signal.aborted) this.handleMessage(data.toString());
+          });
+          socket.on("error", (error) => reject(error));
+          socket.once("close", () => {
+            signal.removeEventListener("abort", onAbort);
+            if (this.ws === socket) this.ws = void 0;
+            if (!opened) reject(new Error("WebSocket closed before opening"));
+            if (opened && !signal.aborted && !this.isReconnecting) {
+              void this.reconnect(wsUrl);
             }
           });
-          this.ws.once("error", (err) => {
-            console.error("WebSocket error:", err.message);
-            if (!this.isReconnecting) {
-              this.reconnect(this.lastWsUrl);
-            }
-            reject(err);
-          });
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }, this.backOffOptions);
+        });
+        return;
+      } catch (error) {
+        signal.throwIfAborted();
+        if (attempt >= this.maxReconnectAttempts) throw error;
+        console.warn(
+          `Connection attempt #${attempt} failed:`,
+          error instanceof Error ? error.message : String(error)
+        );
+        const maximumDelay = Math.min(
+          DEFAULT_STARTING_DELAY * 2 ** (attempt - 1),
+          DEFAULT_MAX_DELAY
+        );
+        await (0, import_promises.setTimeout)(Math.random() * maximumDelay, void 0, { signal });
+      }
+    }
   }
   getEventKey(event) {
     const ids = [];
@@ -3573,51 +3026,51 @@ var WebSocketClient = class extends import_events4.EventEmitter {
     this.isReconnecting = true;
     this.reconnectionAttempts++;
     console.log(`Tentando reconex\xE3o #${this.reconnectionAttempts}...`);
-    (0, import_exponential_backoff.backOff)(() => this.initializeWebSocket(wsUrl), this.backOffOptions).catch((error) => {
-      console.error(`Falha ao reconectar: ${error.message}`);
-      this.emit("reconnectFailed", error);
-    }).finally(() => {
+    try {
+      await this.initializeWebSocket(wsUrl);
+    } catch (error) {
+      if (!this.connectionAbort.signal.aborted) {
+        console.error("Failed to reconnect:", error);
+        this.emit("reconnectFailed", error);
+      }
+    } finally {
       this.isReconnecting = false;
-    });
+    }
   }
   /**
-   * Closes the WebSocket connection if it exists.
-   *
-   * This method attempts to gracefully close the WebSocket connection
-   * and sets the WebSocket instance to undefined. If an error occurs
-   * during the closing process, it will be caught and logged.
-   *
-   * @throws {Error} Logs an error message if closing the WebSocket fails.
+   * Cancels pending connects and retry delays, then closes the current socket.
+   * Keeps error/close listeners until closure so handshake cancellation rejects
+   * connect() without an unhandled error and heartbeat cleanup still runs.
+   * Concurrent calls wait for the same bounded close operation.
    */
-  async close() {
-    if (!this.ws) {
-      console.warn("No WebSocket connection to close");
-      return;
-    }
-    console.log("Closing WebSocket connection.");
+  close() {
+    if (this.closing) return this.closing;
+    const closing = this.runClose().finally(() => {
+      this.closing = void 0;
+    });
+    this.closing = closing;
+    return closing;
+  }
+  async runClose() {
     this.shouldReconnect = false;
+    const socket = this.ws;
+    this.connectionAbort.abort(new Error("WebSocket connection cancelled"));
     this.eventQueue.forEach((timeout) => clearTimeout(timeout));
     this.eventQueue.clear();
-    const closeTimeout = setTimeout(() => {
-      if (this.ws && this.ws.readyState !== import_ws.default.CLOSED) {
-        this.ws.terminate();
-      }
-    }, 5e3);
-    try {
-      this.ws.removeAllListeners();
-      await new Promise((resolve) => {
-        this.ws.once("close", () => {
-          clearTimeout(closeTimeout);
-          resolve();
+    if (socket && socket.readyState !== import_ws.default.CLOSED) {
+      const closeTimeout = setTimeout(() => socket.terminate(), 5e3);
+      try {
+        await new Promise((resolve) => {
+          socket.once("close", resolve);
+          socket.close();
         });
-        this.ws.close();
-      });
-    } catch (error) {
-      console.error("Error closing WebSocket:", error);
-    } finally {
-      this.ws = void 0;
-      this.emit("disconnected");
+      } finally {
+        clearTimeout(closeTimeout);
+        socket.removeAllListeners();
+      }
     }
+    if (this.ws === socket) this.ws = void 0;
+    this.emit("disconnected");
   }
   /**
    * Checks if the WebSocket connection is currently open and active.
@@ -3667,6 +3120,7 @@ var WebSocketClient = class extends import_events4.EventEmitter {
     this.eventQueue.forEach((timeout) => clearTimeout(timeout));
     this.eventQueue.clear();
     this.shouldReconnect = false;
+    this.connectionAbort.abort(new Error("WebSocket connection cancelled"));
     this.isReconnecting = false;
     this.lastWsUrl = "";
     this.reconnectionAttempts = 0;
@@ -4035,47 +3489,19 @@ var AriClient = class {
   /**
    * Closes the WebSocket connection if one exists.
    */
-  closeWebSocket() {
-    return new Promise((resolve) => {
-      if (!this.webSocketClient) {
-        console.warn("No WebSocket connection to close");
-        resolve();
-        return;
-      }
-      console.log("Closing WebSocket connection and cleaning up listeners.");
-      const closeTimeout = setTimeout(() => {
-        if (this.webSocketClient) {
-          this.webSocketClient.removeAllListeners();
-          this.webSocketClient = void 0;
-        }
-        resolve();
-      }, 5e3);
-      this.eventListeners.forEach((listeners, event) => {
-        listeners.forEach((listener) => {
-          this.webSocketClient?.off(
-            event,
-            listener
-          );
-        });
-      });
-      this.eventListeners.clear();
-      this.webSocketClient.once("close", () => {
-        clearTimeout(closeTimeout);
-        this.webSocketClient = void 0;
-        console.log("WebSocket connection closed");
-        resolve();
-      });
-      this.webSocketClient.close().then(() => {
-        clearTimeout(closeTimeout);
-        this.webSocketClient = void 0;
-        resolve();
-      }).catch((error) => {
-        console.error("Error during WebSocket close:", error);
-        clearTimeout(closeTimeout);
-        this.webSocketClient = void 0;
-        resolve();
-      });
+  async closeWebSocket() {
+    const socketClient = this.webSocketClient;
+    if (!socketClient) return;
+    this.eventListeners.forEach((listeners, event) => {
+      listeners.forEach((listener) => socketClient.off(event, listener));
     });
+    this.eventListeners.clear();
+    try {
+      await socketClient.close();
+    } finally {
+      socketClient.cleanup();
+      if (this.webSocketClient === socketClient) this.webSocketClient = void 0;
+    }
   }
   /**
    * Creates or retrieves a Channel instance.
